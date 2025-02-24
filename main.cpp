@@ -111,13 +111,70 @@ int main(int argc, char* argv[]) {
         chip8_state.PC = (instruction & 0x0FFF);
         continue;
         break;
+      case 3:
+        //(3XNN) Skip the following instruction if VX equals NN
+        if (chip8_state.V[(instruction & 0x0F00) >> 8] == (instruction & 0x00FF)) {
+          chip8_state.PC += 4; //skip
+          continue;
+        }
+        break;
+      case 4:
+        //(4XNN) Skip the following instruction if VX does not equal NN
+          if (chip8_state.V[(instruction & 0x0F00) >> 8] != (instruction & 0x00FF)) {
+            chip8_state.PC += 4; //skip
+            continue;
+          }
+        break;
+      case 5:
+        //(5XY0) Skip the following instruction if VX equals VY
+          if (chip8_state.V[(instruction & 0x0F00) >> 8] == chip8_state.V[(instruction & 0x00F0) >> 4]) {
+            chip8_state.PC += 4; //skip
+            continue;
+          }
+        break;
       case 6:
         //(6XNN) LD immediate instruction
         chip8_state.V[(instruction & 0x0F00) >> 8] = (instruction & 0x00FF);
         break;
+      case 7:
+        //(7XNN) Add NN to VX
+        chip8_state.V[(instruction & 0x0F00) >> 8] += static_cast<uint8_t>(instruction & 0x00FF);
+        break;
+      case 8:
+        //nested switch
+        switch (instruction & 0x000F) {
+          case 0:
+            //(8XY0) copy VY into VX
+              chip8_state.V[(instruction & 0x0F00) >> 8] = chip8_state.V[(instruction & 0x00F0) >> 4];
+            break;
+          case 1:
+            //(8XY1) Set VX to VX OR VY
+            chip8_state.V[(instruction & 0x0F00) >> 8] = chip8_state.V[(instruction & 0x0F00) >> 8] | chip8_state.V[(instruction & 0x00F0) >> 4];
+            break;
+          case 2:
+            break;
+          case 3:
+            break;
+          case 4:
+            break;
+          case 5:
+            break;
+          case 6:
+            break;
+          case 7:
+            break;
+          case 14:
+            break;
+          default:
+            std::cout << "Instruction not implemented or ROM error!" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        //End of nested switch
+        break;
+
       default:
         std::cout << "Instruction not implemented or ROM error!" << std::endl;
-        break;
+        exit(EXIT_FAILURE);
     }
 
     //Increment instruction counter
