@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <filesystem>
 #include <cstdint>
@@ -40,7 +41,7 @@ typedef struct Chip8 {
 } Chip8;
 
 //Function to write the current state of the interpreter to a file dump
-void writeStateToFile(const Chip8& chip8_state, std::ofstream& file);
+void writeStateToFile(const Chip8& chip8_state, uint16_t instruction, std::ofstream& file);
 
 int main(int argc, char* argv[]) {
   //Validate command line arguments
@@ -63,6 +64,7 @@ int main(int argc, char* argv[]) {
   std::filesystem::path path(rom_path);
   std::filesystem::path chip8_state_dump_path = path.parent_path().parent_path() / "chip8_state_dump" / (path.stem().string() + "_statedump.txt");
   std::ofstream state_file(chip8_state_dump_path.string(), std::ios::trunc);
+  state_file << std::hex;
   if (!state_file.is_open()) {
     std::cerr << "Unable to open debugger (dump) file for writing\n";
   }
@@ -93,15 +95,22 @@ int main(int argc, char* argv[]) {
   /******************************************************************************/
 
   /**** main execution loop ****/
+  uint16_t instruction;
   while(chip8_state.PC < (loadAddress + romSize)) {
-    //Dump chip8_state contents
-    writeStateToFile(chip8_state, state_file);
 
     //Fetch instruction from virtual memory
-    uint16_t instruction = (chip8_state.mem[chip8_state.PC] << 8)  | chip8_state.mem[chip8_state.PC + 1];
+    instruction = (chip8_state.mem[chip8_state.PC] << 8)  | chip8_state.mem[chip8_state.PC + 1];
+
+    //Dump chip8_state contents
+    writeStateToFile(chip8_state, instruction, state_file);
 
     //Determine operation from extracted opcode
     switch ((instruction & 0xF000) >> 12) {
+      case 1:
+        //(1NNN) Jump to address NNN instruction
+        chip8_state.PC = (instruction & 0x0FFF);
+        continue;
+        break;
       case 6:
         //(6XNN) LD immediate instruction
         chip8_state.V[(instruction & 0x0F00) >> 8] = (instruction & 0x00FF);
@@ -117,15 +126,18 @@ int main(int argc, char* argv[]) {
   /**** End of main execution loop ****/
 
   //FINAL dump chip8_state contents
-  writeStateToFile(chip8_state, state_file);
+  state_file << "STATE AFTER FINAL INSTRUCTION:\n";
+  state_file << std::hex;
+  writeStateToFile(chip8_state, instruction, state_file);
 
   //cleanup
   state_file.close();
   return EXIT_SUCCESS;
 }
 
-void writeStateToFile(const Chip8& chip8_state, std::ofstream& file) {
+void writeStateToFile(const Chip8& chip8_state, uint16_t instruction, std::ofstream& file) {
   file << "PC: " << chip8_state.PC << "\n";
+  file << "Instruction: 0x" << std::uppercase << instruction << "\n";
   file << "I: " << chip8_state.I << "\n";
   file << "SP: " << static_cast<int>(chip8_state.SP) << "\n";
   file << "Delay Timer: " << static_cast<int>(chip8_state.delay_timer) << "\n";
