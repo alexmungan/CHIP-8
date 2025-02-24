@@ -1,2 +1,3 @@
 .idea/
 cmake-build-*/
+chip8_state_dump/*

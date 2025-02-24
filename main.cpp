@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -38,6 +39,9 @@ typedef struct Chip8 {
   }
 } Chip8;
 
+//Function to write the current state of the interpreter to a file dump
+void writeStateToFile(const Chip8& chip8_state, std::ofstream& file);
+
 int main(int argc, char* argv[]) {
   //Validate command line arguments
   if (argc != 2) {
@@ -55,6 +59,13 @@ int main(int argc, char* argv[]) {
   /**** Load ROM into virtual memory and initialize the interpreter's state ****/
   std::cout << "Loading ROM: " << rom_path << std::endl;
   Chip8 chip8_state;
+  //Set up chip8_state dump file
+  std::filesystem::path path(rom_path);
+  std::filesystem::path chip8_state_dump_path = path.parent_path().parent_path() / "chip8_state_dump" / (path.stem().string() + "_statedump.txt");
+  std::ofstream state_file(chip8_state_dump_path.string(), std::ios::trunc);
+  if (!state_file.is_open()) {
+    std::cerr << "Unable to open debugger (dump) file for writing\n";
+  }
 
   //Load in ROM binary into file handle
   std::ifstream rom(rom_path, std::ios::binary | std::ios::ate);
@@ -83,6 +94,9 @@ int main(int argc, char* argv[]) {
 
   /**** main execution loop ****/
   while(chip8_state.PC < (loadAddress + romSize)) {
+    //Dump chip8_state contents
+    writeStateToFile(chip8_state, state_file);
+
     //Fetch instruction from virtual memory
     uint16_t instruction = (chip8_state.mem[chip8_state.PC] << 8)  | chip8_state.mem[chip8_state.PC + 1];
 
@@ -100,9 +114,35 @@ int main(int argc, char* argv[]) {
     //Increment instruction counter
     chip8_state.PC += 2;
   }
-    /**** End of main execution loop ****/
+  /**** End of main execution loop ****/
 
+  //FINAL dump chip8_state contents
+  writeStateToFile(chip8_state, state_file);
+
+  //cleanup
+  state_file.close();
   return EXIT_SUCCESS;
+}
+
+void writeStateToFile(const Chip8& chip8_state, std::ofstream& file) {
+  file << "PC: " << chip8_state.PC << "\n";
+  file << "I: " << chip8_state.I << "\n";
+  file << "SP: " << static_cast<int>(chip8_state.SP) << "\n";
+  file << "Delay Timer: " << static_cast<int>(chip8_state.delay_timer) << "\n";
+  file << "Sound Timer: " << static_cast<int>(chip8_state.sound_timer) << "\n";
+
+  file << "Registers:\n";
+  for (int i = 0; i < 16; ++i) {
+    file << "V[" << i << "]: " << static_cast<int>(chip8_state.V[i]) << "\n";
+  }
+
+  /*file << "Memory:\n";
+  for (int i = 0; i < 16; ++i) {
+    file << std::hex << static_cast<int>(chip8.mem[i]) << " ";
+  }*/
+
+  file << "\n\n";  // Add a newline for better readability
+
 }
 
 
