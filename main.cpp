@@ -1,3 +1,5 @@
+#include <iostream>
+#include <fstream>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -36,7 +38,7 @@ typedef struct Chip8 {
   }
 } Chip8;
 
-int main(int argc, int* argv[]) {
+int main(int argc, char* argv[]) {
   //Validate command line arguments
   if (argc != 2) {
     std::cerr << "Usage: chip8 <path_to_rom>\n";
@@ -73,22 +75,22 @@ int main(int argc, int* argv[]) {
   }
 
   //Read the ROM into the virtual memory array starting at address 0x200
-  if (!rom.read(reinterpret_cast<char*>(&mem[loadAddress]), romSize)) {
+  if (!rom.read(reinterpret_cast<char*>(&chip8_state.mem[loadAddress]), romSize)) {
     std::cerr << "Error reading ROM file." << std::endl;
     exit(EXIT_FAILURE);
   }
   /******************************************************************************/
 
   /**** main execution loop ****/
-  while(chip_state.PC < (load_address + romSize)) {
+  while(chip8_state.PC < (loadAddress + romSize)) {
     //Fetch instruction from virtual memory
-    uint16_t instruction = (mem[PC] << 8)  | mem[PC + 1];
+    uint16_t instruction = (chip8_state.mem[chip8_state.PC] << 8)  | chip8_state.mem[chip8_state.PC + 1];
 
     //Determine operation from extracted opcode
     switch ((instruction & 0xF000) >> 12) {
       case 6:
         //(6XNN) LD immediate instruction
-        chip8_state.V[(instruction & 0xOFOO) >> 8] = (instruction & 0x00FF);
+        chip8_state.V[(instruction & 0x0F00) >> 8] = (instruction & 0x00FF);
         break;
       default:
         std::cout << "Instruction not implemented or ROM error!" << std::endl;
