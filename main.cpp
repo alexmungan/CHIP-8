@@ -8,6 +8,11 @@
 
 #define MEM_SIZE 4096
 
+#define NIBBLE3 (instruction & 0xF000) >> 12
+#define NIBBLE2 (instruction & 0x0F00) >> 8
+#define NIBBLE1 (instruction & 0x00F0) >> 4
+#define NIBBLE0 (instruction & 0x000F)
+
 typedef struct Chip8 {
   // Memory
   uint8_t mem[MEM_SIZE];
@@ -105,7 +110,7 @@ int main(int argc, char* argv[]) {
     writeStateToFile(chip8_state, instruction, state_file);
 
     //Determine operation from extracted opcode
-    switch ((instruction & 0xF000) >> 12) {
+    switch (NIBBLE3) {
       case 1:
         //(1NNN) Jump to address NNN instruction
         chip8_state.PC = (instruction & 0x0FFF);
@@ -113,58 +118,92 @@ int main(int argc, char* argv[]) {
         break;
       case 3:
         //(3XNN) Skip the following instruction if VX equals NN
-        if (chip8_state.V[(instruction & 0x0F00) >> 8] == (instruction & 0x00FF)) {
+        if (chip8_state.V[NIBBLE2] == (instruction & 0x00FF)) {
           chip8_state.PC += 4; //skip
           continue;
         }
         break;
       case 4:
         //(4XNN) Skip the following instruction if VX does not equal NN
-          if (chip8_state.V[(instruction & 0x0F00) >> 8] != (instruction & 0x00FF)) {
+          if (chip8_state.V[NIBBLE2] != (instruction & 0x00FF)) {
             chip8_state.PC += 4; //skip
             continue;
           }
         break;
       case 5:
         //(5XY0) Skip the following instruction if VX equals VY
-          if (chip8_state.V[(instruction & 0x0F00) >> 8] == chip8_state.V[(instruction & 0x00F0) >> 4]) {
+          if (chip8_state.V[NIBBLE2] == chip8_state.V[NIBBLE1]) {
             chip8_state.PC += 4; //skip
             continue;
           }
         break;
       case 6:
         //(6XNN) LD immediate instruction
-        chip8_state.V[(instruction & 0x0F00) >> 8] = (instruction & 0x00FF);
+        chip8_state.V[NIBBLE2] = (instruction & 0x00FF);
         break;
       case 7:
         //(7XNN) Add NN to VX
-        chip8_state.V[(instruction & 0x0F00) >> 8] += static_cast<uint8_t>(instruction & 0x00FF);
+        chip8_state.V[NIBBLE2] += static_cast<uint8_t>(instruction & 0x00FF);
         break;
       case 8:
         //nested switch
-        switch (instruction & 0x000F) {
+        switch (NIBBLE0) {
           case 0:
             //(8XY0) copy VY into VX
-              chip8_state.V[(instruction & 0x0F00) >> 8] = chip8_state.V[(instruction & 0x00F0) >> 4];
+              chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE1];
             break;
           case 1:
             //(8XY1) Set VX to VX OR VY
-            chip8_state.V[(instruction & 0x0F00) >> 8] = chip8_state.V[(instruction & 0x0F00) >> 8] | chip8_state.V[(instruction & 0x00F0) >> 4];
+            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE2] | chip8_state.V[NIBBLE1];
             break;
           case 2:
+            //(8XY2) Set VX to VX AND VY
+            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE2] & chip8_state.V[NIBBLE1];
             break;
           case 3:
+            //(8XY3) Set VX to VX XOR VY
+            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE2] ^ chip8_state.V[NIBBLE1];
             break;
-          case 4:
+          case 4: {
+            //(8XY4) Add VY to VX, set VF (overflow flag)
+            uint16_t result = static_cast<uint16_t>( chip8_state.V[NIBBLE2] ) + static_cast<uint16_t>( chip8_state.V[NIBBLE1] );
+            if (result > UINT8_MAX)
+              chip8_state.V[0xF] = 1;
+            else
+              chip8_state.V[0xF] = 0;
+            chip8_state.V[NIBBLE2] = static_cast<uint8_t>(result);
             break;
-          case 5:
+          }
+          case 5: {
+            //(8XY5) Subtract VX = VX - VY, set VF (underflow flag)
+            if (chip8_state.V[NIBBLE2] < chip8_state.V[NIBBLE1])
+              chip8_state.V[0xF] = 0;
+            else
+              chip8_state.V[0xF] = 1;
+            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE2] - chip8_state.V[NIBBLE1];
             break;
-          case 6:
+          }
+          case 6: {
+            //(8XY6) VX = VY >> 1, VF is VY's lsb (before shift)
+            chip8_state.V[0xF] = chip8_state.V[NIBBLE1] & static_cast<uint8_t>(0x01);
+            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE1] >> 1;
             break;
-          case 7:
+          }
+          case 7: {
+            //(8XY7) Subtract VX = VY - VX, set VF (underflow flag)
+            if (chip8_state.V[NIBBLE1] < chip8_state.V[NIBBLE2])
+              chip8_state.V[0xF] = 0;
+            else
+              chip8_state.V[0xF] = 1;
+            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE1] - chip8_state.V[NIBBLE2];
             break;
-          case 14:
+          }
+          case 14: {
+            //(8XYE) VX = VY << 1, VF is VY's msb (before shift)
+            chip8_state.V[0xF] = (chip8_state.V[NIBBLE1] & static_cast<uint8_t>(0x80)) >> 7;
+            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE1] << 1;
             break;
+          }
           default:
             std::cout << "Instruction not implemented or ROM error!" << std::endl;
             exit(EXIT_FAILURE);
