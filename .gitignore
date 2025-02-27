@@ -1,3 +1,4 @@
 .idea/
 cmake-build-*/
 chip8_state_dump/*
+!chip8_state_dump/.gitkeep
