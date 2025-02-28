@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <cstdint>
+#include <random>
 #include <cstdlib>
 #include <cstring>
 
@@ -16,6 +17,9 @@
 typedef struct Chip8 {
   // Memory
   uint8_t mem[MEM_SIZE];
+
+  //Stack
+  uint16_t stack[16];
 
   // Graphics memory
   uint8_t gfx[64 * 32];
@@ -32,6 +36,7 @@ typedef struct Chip8 {
 
   Chip8() {
     // Clear all memory and registers
+    std::memset(stack, 0, sizeof(stack));
     std::memset(mem, 0, MEM_SIZE);          // Initialize memory to 0
     std::memset(gfx, 0, sizeof(gfx));       // Initialize graphics memory to 0
     std::memset(V, 0, sizeof(V));            // Initialize data registers to 0
@@ -100,8 +105,9 @@ int main(int argc, char* argv[]) {
   /******************************************************************************/
 
   /**** main execution loop ****/
+  bool done = false;
   uint16_t instruction;
-  while(chip8_state.PC < (loadAddress + romSize)) {
+  while((chip8_state.PC < (loadAddress + romSize)) && !done) {
 
     //Fetch instruction from virtual memory
     instruction = (chip8_state.mem[chip8_state.PC] << 8)  | chip8_state.mem[chip8_state.PC + 1];
@@ -111,10 +117,37 @@ int main(int argc, char* argv[]) {
 
     //Determine operation from extracted opcode
     switch (NIBBLE3) {
+      case 0: {
+        if(instruction == 0x00E0) { //clear the screen
+          ; //Todo
+        }
+        else if(instruction == 0x00EE) //return from subroutine
+        {
+          if(chip8_state.SP > 0) {
+            chip8_state.PC = chip8_state.stack[--chip8_state.SP];
+            continue;
+          } else {
+            std::cerr << "Stack underflow\n";
+            exit(EXIT_FAILURE );
+          }
+        }
+        break;
+      }
       case 1:
         //(1NNN) Jump to address NNN instruction
         chip8_state.PC = (instruction & 0x0FFF);
         continue;
+        break;
+      case 2:
+        //(2NNN) Execute subroutine at NNN
+        if(chip8_state.SP < 16) {
+          chip8_state.stack[chip8_state.SP++] = chip8_state.PC + 2;
+          chip8_state.PC = (instruction & 0x0FFF);
+          continue;
+        } else {
+          std::cerr << "Stack overflow\n";
+          exit(EXIT_FAILURE);
+        }
         break;
       case 3:
         //(3XNN) Skip the following instruction if VX equals NN
@@ -210,7 +243,36 @@ int main(int argc, char* argv[]) {
         }
         //End of nested switch
         break;
-
+      case 9:
+        //(9XY0) Skip next instr if VX != VY
+        if(chip8_state.V[NIBBLE2] != chip8_state.V[NIBBLE1]) {
+          chip8_state.PC += 4;
+          continue;
+        }
+        break;
+      case 0xA:
+        //(ANNN): Store address NNN in register I
+        chip8_state.I = instruction & 0x0FFF;
+        break;
+      case 0xB:
+        //(BNNN): Jump to address NNN + V0
+        chip8_state.PC = (instruction & 0x0FFF) + static_cast<uint16_t>(chip8_state.V[0]);
+        continue;
+        break;
+      case 0xC: {
+        //(CXNN): Set VX to random number w/ mask of NN
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<uint8_t> dist(0, 255);
+        chip8_state.V[NIBBLE2] = dist(gen) & static_cast<uint8_t>(instruction & 0x00FF);
+        break;
+      }
+      case 0xF: {
+        if(instruction == 0xFFF) { //CUSTOM HALT INSTRUCTION
+          done = true;
+        }
+        break;
+      }
       default:
         std::cout << "Instruction not implemented or ROM error!" << std::endl;
         exit(EXIT_FAILURE);
@@ -244,12 +306,16 @@ void writeStateToFile(const Chip8& chip8_state, uint16_t instruction, std::ofstr
     file << "V[" << i << "]: " << static_cast<int>(chip8_state.V[i]) << "\n";
   }
 
+  for(int i = 0; i < 16; ++i) {
+    file << "S[" << i << "]: " << static_cast<int>(chip8_state.stack[i]) << ", ";
+  }
+
   /*file << "Memory:\n";
   for (int i = 0; i < 16; ++i) {
     file << std::hex << static_cast<int>(chip8.mem[i]) << " ";
   }*/
 
-  file << "\n\n";  // Add a newline for better readability
+  file << "\n\n\n";  // Add a newline for better readability
 
 }
 
