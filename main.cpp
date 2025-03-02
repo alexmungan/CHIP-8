@@ -53,6 +53,9 @@ typedef struct Chip8 {
 //Function to write the current state of the interpreter to a file dump
 void writeStateToFile(const Chip8& chip8_state, uint16_t instruction, std::ofstream& file);
 
+//Function to free resources upon early program termination
+void cleanup(std::ofstream& state_file);
+
 int main(int argc, char* argv[]) {
   //Validate command line arguments
   if (argc != 2) {
@@ -125,9 +128,11 @@ int main(int argc, char* argv[]) {
         {
           if(chip8_state.SP > 0) {
             chip8_state.PC = chip8_state.stack[--chip8_state.SP];
+            chip8_state.stack[chip8_state.SP] = 0; //clear old return value, not technically necessary, just for clarity in statedump file
             continue;
           } else {
             std::cerr << "Stack underflow\n";
+            cleanup(state_file);
             exit(EXIT_FAILURE );
           }
         }
@@ -146,6 +151,7 @@ int main(int argc, char* argv[]) {
           continue;
         } else {
           std::cerr << "Stack overflow\n";
+          cleanup(state_file);
           exit(EXIT_FAILURE);
         }
         break;
@@ -239,6 +245,7 @@ int main(int argc, char* argv[]) {
           }
           default:
             std::cout << "Instruction not implemented or ROM error!" << std::endl;
+            cleanup(state_file);
             exit(EXIT_FAILURE);
         }
         //End of nested switch
@@ -268,7 +275,7 @@ int main(int argc, char* argv[]) {
         break;
       }
       case 0xF: {
-        if(instruction == 0xFFF) { //CUSTOM HALT INSTRUCTION
+        if(instruction == 0xFFFF) { //CUSTOM HALT INSTRUCTION
           done = true;
         }
         break;
@@ -288,8 +295,7 @@ int main(int argc, char* argv[]) {
   state_file << std::hex;
   writeStateToFile(chip8_state, instruction, state_file);
 
-  //cleanup
-  state_file.close();
+  cleanup(state_file);
   return EXIT_SUCCESS;
 }
 
@@ -317,6 +323,10 @@ void writeStateToFile(const Chip8& chip8_state, uint16_t instruction, std::ofstr
 
   file << "\n\n\n";  // Add a newline for better readability
 
+}
+
+void cleanup(std::ofstream& state_file) {
+  if (state_file) state_file.close();
 }
 
 
