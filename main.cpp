@@ -17,6 +17,8 @@
 constexpr int SCALE = 10; //Makes each chip8 pixel equal a 10x10 "pixel" on target display
 
 void drawGraphics(sf::RenderWindow& window, const uint8_t display[CHIP8_HEIGHT * CHIP8_WIDTH]);
+//Map SFML keys to CHIP-8 keys (0-15)
+int mapKeyToChip8(sf::Keyboard::Scancode code);
 
 int main(int argc, char* argv[]) {
   //Validate command line arguments
@@ -79,6 +81,18 @@ int main(int argc, char* argv[]) {
       if (event->is<sf::Event::Closed>()) {
         window.close();  // Close the window when the close button is clicked
       }
+      else if (const auto* keyPressed = event->getIf<sf::Event::KeyPressed>()) {
+        int keyIndex = mapKeyToChip8(keyPressed->scancode);
+        if (keyIndex != -1) {
+          chip8_state.keypad[keyIndex] = 1; // Mark the key as pressed
+        }
+      }
+      else if (const auto* keyReleased = event->getIf<sf::Event::KeyReleased>()) {
+        int keyIndex = mapKeyToChip8(keyReleased->scancode);
+        if (keyIndex != -1) {
+          chip8_state.keypad[keyIndex] = 0; // Mark the key as released
+        }
+      }
     }
 
     //TODO: handleInput()
@@ -121,5 +135,26 @@ void drawGraphics(sf::RenderWindow& window, const uint8_t display[CHIP8_HEIGHT* 
   window.display();
 }
 
+int mapKeyToChip8(sf::Keyboard::Scancode code) {
+  switch (code) {
+    case sf::Keyboard::Scancode::Num1: return 1;
+    case sf::Keyboard::Scancode::Num2: return 2;
+    case sf::Keyboard::Scancode::Num3: return 3;
+    case sf::Keyboard::Scancode::Num4: return 0xC;
+    case sf::Keyboard::Scancode::Q: return 4;
+    case sf::Keyboard::Scancode::W: return 5;
+    case sf::Keyboard::Scancode::E: return 6;
+    case sf::Keyboard::Scancode::R: return 0xD;
+    case sf::Keyboard::Scancode::A: return 7;
+    case sf::Keyboard::Scancode::S: return 8;
+    case sf::Keyboard::Scancode::D: return 9;
+    case sf::Keyboard::Scancode::F: return 0xE;
+    case sf::Keyboard::Scancode::Z: return 0xA;
+    case sf::Keyboard::Scancode::X: return 0;
+    case sf::Keyboard::Scancode::C: return 0xB;
+    case sf::Keyboard::Scancode::V: return 0xF;
+    default: return -1;
+  }
+}
 
 

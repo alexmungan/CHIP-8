@@ -32,6 +32,9 @@ typedef struct Chip8 {
     // Graphics memory
     uint8_t gfx[CHIP8_WIDTH * CHIP8_HEIGHT];
 
+    //Keypad state
+    uint8_t keypad[16];
+
     // Data Registers
     uint8_t V[16];
 
@@ -45,6 +48,7 @@ typedef struct Chip8 {
     Chip8() {
         // Clear all memory and registers
         std::memset(stack, 0, sizeof(stack));
+        std::memset(keypad, 0, sizeof(keypad));
         std::memset(mem, 0, MEM_SIZE);          // Initialize memory to 0
         std::memset(gfx, 0, sizeof(gfx));       // Initialize graphics memory to 0
         std::memset(V, 0, sizeof(V));            // Initialize data registers to 0

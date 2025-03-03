@@ -17,8 +17,16 @@ void writeStateToFile(const Chip8& chip8_state, uint16_t instruction, std::ofstr
         file << "V[" << i << "]: " << static_cast<int>(chip8_state.V[i]) << "\n";
     }
 
+    //Stack
     for(int i = 0; i < 16; ++i) {
         file << "S[" << i << "]: " << static_cast<int>(chip8_state.stack[i]) << ", ";
+    }
+
+    file << "\n";
+
+    //keypad state
+    for(int i = 0; i < 16; ++i) {
+      file << "keypad[" << i << "]: " << static_cast<int>(chip8_state.keypad[i]) << ", ";
     }
 
     /*file << "Memory:\n";
@@ -46,7 +54,9 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
     switch (NIBBLE3) {
       case 0: {
         if(instruction == 0x00E0) { //clear the screen
-          ; //Todo
+          for (int i = 0; i < 64 * 32; ++i) {
+            chip8_state.gfx[i] = 0; // Set each pixel to 0 (black)
+          }
         }
         else if(instruction == 0x00EE) //return from subroutine
         {
@@ -220,6 +230,23 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
               }
               chip8_state.gfx[pixel_index] ^= 1; // XOR pixel value
             }
+          }
+        }
+        break;
+      }
+      case 0xE: {
+        if ((instruction & 0x00FF) == 0x9E) { //If key is pressed, skip next instr
+          int key = chip8_state.V[NIBBLE2];
+          if (chip8_state.keypad[key]) {
+            chip8_state.PC += 4;
+            return true;
+          }
+        }
+        else if ((instruction & 0x00FF) == 0xA1) { //If key is NOT pressed, skip next instr
+          int key = chip8_state.V[NIBBLE2];
+          if (!chip8_state.keypad[key]) {
+            chip8_state.PC += 4;
+            return true;
           }
         }
         break;
