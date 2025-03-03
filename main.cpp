@@ -14,9 +14,9 @@
 
 #include "chip8.h"
 
-constexpr int CHIP8_WIDTH = 64;
-constexpr int CHIP8_HEIGHT = 32;
 constexpr int SCALE = 10; //Makes each chip8 pixel equal a 10x10 "pixel" on target display
+
+void drawGraphics(sf::RenderWindow& window, const uint8_t display[CHIP8_HEIGHT * CHIP8_WIDTH]);
 
 int main(int argc, char* argv[]) {
   //Validate command line arguments
@@ -68,15 +68,30 @@ int main(int argc, char* argv[]) {
   }
   /******************************************************************************/
 
-  /**** main execution loop ****/
-  bool done = false;
-  uint16_t instruction;
-  while(emulateCycle(chip8_state, instruction, state_file)) {
 
+  /******** main execution loop ********/
+  uint16_t instruction;
+  sf::RenderWindow window(sf::VideoMode({CHIP8_WIDTH * SCALE, CHIP8_HEIGHT * SCALE}), "CHIP-8 Emulator");
+  //TODO: initAudio()
+
+  while (window.isOpen()) {
+    while (const std::optional event = window.pollEvent()) {
+      if (event->is<sf::Event::Closed>()) {
+        window.close();  // Close the window when the close button is clicked
+      }
+    }
+
+    //TODO: handleInput()
+    if (!emulateCycle(chip8_state, instruction, state_file))
+      break;
+
+    //TODO: updateAudio()
+
+    drawGraphics(window, chip8_state.gfx);
 
   }
 
-  /**** End of main execution loop ****/
+  /******** End of main execution loop ********/
 
   //FINAL dump chip8_state contents
   state_file << "STATE AFTER FINAL INSTRUCTION:\n";
@@ -87,6 +102,24 @@ int main(int argc, char* argv[]) {
   return EXIT_SUCCESS;
 }
 
+// Assume chip8.display is a 64x32 array of 0s and 1s
+void drawGraphics(sf::RenderWindow& window, const uint8_t display[CHIP8_HEIGHT* CHIP8_WIDTH]) {
+  window.clear(sf::Color::Black);
+
+  sf::RectangleShape pixel(sf::Vector2f(SCALE, SCALE));
+  pixel.setFillColor(sf::Color::White);
+
+  for (int y = 0; y < CHIP8_HEIGHT; y++) {
+    for (int x = 0; x < CHIP8_WIDTH; x++) {
+      if (display[y * CHIP8_WIDTH + x]) {  // Flattened indexing
+        pixel.setPosition(sf::Vector2f(x * SCALE, y * SCALE));
+        window.draw(pixel);
+      }
+    }
+  }
+
+  window.display();
+}
 
 
 

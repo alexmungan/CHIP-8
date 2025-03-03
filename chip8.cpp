@@ -198,10 +198,32 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
         chip8_state.V[NIBBLE2] = dist(gen) & static_cast<uint8_t>(instruction & 0x00FF);
         break;
       }
-      case 0xD:
+      case 0xD: {
         //(DXYN) Draw a sprite using XOR
+        int x = chip8_state.V[NIBBLE2];
+        int y = chip8_state.V[NIBBLE1];
+        chip8_state.V[0xF] = 0; // VF is used for collision detection
 
+        for (int row = 0; row < NIBBLE0; row++) {
+          uint8_t sprite_byte = chip8_state.mem[chip8_state.I + row]; // Read one row of the sprite
+
+          for (int col = 0; col < 8; col++) { // Iterate over 8 bits in the byte
+            int pixel_x = (x + col) % 64;
+            int pixel_y = (y + row) % 32;
+            int pixel_index = pixel_y * 64 + pixel_x;
+
+            uint8_t sprite_pixel = (sprite_byte >> (7 - col)) & 1; // Extract one pixel (bit)
+
+            if (sprite_pixel) {
+              if (chip8_state.gfx[pixel_index]) {
+                chip8_state.V[0xF] = 1; // Collision detected
+              }
+              chip8_state.gfx[pixel_index] ^= 1; // XOR pixel value
+            }
+          }
+        }
         break;
+      }
       case 0xF: {
         if(instruction == 0xFFFF) { //CUSTOM HALT INSTRUCTION
           return (running = false);

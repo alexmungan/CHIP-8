@@ -12,6 +12,8 @@
 
 constexpr size_t MEM_SIZE = 4096;
 constexpr size_t loadAddress = 0x200; //CHIP-8 programs are usually loaded at address 0x200 (512)
+constexpr int CHIP8_WIDTH = 64;
+constexpr int CHIP8_HEIGHT = 32;
 #define NIBBLE3 (instruction & 0xF000) >> 12
 #define NIBBLE2 (instruction & 0x0F00) >> 8
 #define NIBBLE1 (instruction & 0x00F0) >> 4
@@ -28,7 +30,7 @@ typedef struct Chip8 {
     uint16_t stack[16];
 
     // Graphics memory
-    uint8_t gfx[64 * 32];
+    uint8_t gfx[CHIP8_WIDTH * CHIP8_HEIGHT];
 
     // Data Registers
     uint8_t V[16];
