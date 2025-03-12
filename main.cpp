@@ -62,12 +62,14 @@ int main(int argc, char* argv[]) {
   //Check ROM size
   if (chip8_state.romSize > static_cast<std::streamsize>(MEM_SIZE - loadAddress)) {
     std::cerr << "Error: ROM file is too large to fit in memory." << std::endl;
+    cleanup(state_file);
     exit(EXIT_FAILURE);
   }
 
   //Read the ROM into the virtual memory array starting at address 0x200
   if (!rom.read(reinterpret_cast<char*>(&chip8_state.mem[loadAddress]), chip8_state.romSize)) {
     std::cerr << "Error reading ROM file." << std::endl;
+    cleanup(state_file);
     exit(EXIT_FAILURE);
   }
   /******************************************************************************/
@@ -77,6 +79,16 @@ int main(int argc, char* argv[]) {
   uint16_t instruction;
   sf::RenderWindow window(sf::VideoMode({CHIP8_WIDTH * SCALE, CHIP8_HEIGHT * SCALE}), "CHIP-8 Emulator");
 
+  //Load Sound Buffer
+  sf::SoundBuffer beepBuffer;
+  if (!beepBuffer.loadFromFile("beep.wav")) {
+    std::cerr << "Failed to load beep sound!\n";
+    cleanup(state_file);
+    exit(EXIT_FAILURE);
+  }
+  sf::Sound beepSound(beepBuffer);
+  beepSound.setLooping(true);
+
   //Chip8 refresh rate
   const int FPS = 60;
   const std::chrono::milliseconds FRAME_DURATION(1000 / FPS);
@@ -84,12 +96,15 @@ int main(int argc, char* argv[]) {
   std::chrono::milliseconds time_accumulator(0);
 
   while (window.isOpen()) {
+    //std::cout<< "main loop\n";
     auto current_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_timer_update);
     time_accumulator += elapsed_time;
+    last_timer_update = current_time;
 
     //Process events (keyboard, mouse, etc.)
     while (const std::optional event = window.pollEvent()) {
+      //std::cout << "Processing event...\n";
       if (event->is<sf::Event::Closed>()) {
         window.close();  // Close the window when the close button is clicked
       }
@@ -124,7 +139,14 @@ int main(int argc, char* argv[]) {
       }
       if (chip8_state.sound_timer > 0) {
         chip8_state.sound_timer--;
-        // Trigger beep sound if needed ?????
+        std::cout << "sound_timer = " << static_cast<int>(chip8_state.sound_timer) << std::endl;
+        std::cout << "time accumulator: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_accumulator).count() << std::endl;
+        if (beepSound.getStatus() != sf::SoundSource::Status::Playing) {
+          beepSound.play();
+        }
+      } else {
+        if (beepSound.getStatus() == sf::SoundSource::Status::Playing)
+          beepSound.stop();
       }
 
       drawGraphics(window, chip8_state.gfx);
