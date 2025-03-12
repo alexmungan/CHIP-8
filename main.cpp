@@ -6,6 +6,8 @@
 #include <random>
 #include <cstdlib>
 #include <cstring>
+#include <chrono>
+#include <thread>
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
@@ -74,9 +76,19 @@ int main(int argc, char* argv[]) {
   /******** main execution loop ********/
   uint16_t instruction;
   sf::RenderWindow window(sf::VideoMode({CHIP8_WIDTH * SCALE, CHIP8_HEIGHT * SCALE}), "CHIP-8 Emulator");
-  //TODO: initAudio()
+
+  //Chip8 refresh rate
+  const int FPS = 60;
+  const std::chrono::milliseconds FRAME_DURATION(1000 / FPS);
+  auto last_timer_update = std::chrono::high_resolution_clock::now();
+  std::chrono::milliseconds time_accumulator(0);
 
   while (window.isOpen()) {
+    auto current_time = std::chrono::high_resolution_clock::now();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_timer_update);
+    time_accumulator += elapsed_time;
+
+    //Process events (keyboard, mouse, etc.)
     while (const std::optional event = window.pollEvent()) {
       if (event->is<sf::Event::Closed>()) {
         window.close();  // Close the window when the close button is clicked
@@ -95,13 +107,31 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    //TODO: handleInput()
-    if (!emulateCycle(chip8_state, instruction, state_file))
-      break;
+    //FRAME
+    if (time_accumulator >= FRAME_DURATION) { //If at least 16.67ms has passed
 
-    //TODO: updateAudio()
+      //Run multiple CPU cycles per frame
+      int cycles_per_frame = 12; //Chip8 CPU's run about 8-16 instructions per frame I think???
+      for (int i = 0; i < cycles_per_frame; i++) {
+        if (!emulateCycle(chip8_state, instruction, state_file)) {
+          window.close();
+          break;
+        }
+      }
 
-    drawGraphics(window, chip8_state.gfx);
+      if (chip8_state.delay_timer > 0) {
+        chip8_state.delay_timer--;
+      }
+      if (chip8_state.sound_timer > 0) {
+        chip8_state.sound_timer--;
+        // Trigger beep sound if needed ?????
+      }
+
+      drawGraphics(window, chip8_state.gfx);
+
+      time_accumulator -= FRAME_DURATION;
+
+    } //END OF FRAME
 
   }
 

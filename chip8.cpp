@@ -255,10 +255,42 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
         if(instruction == 0xFFFF) { //CUSTOM HALT INSTRUCTION
           return (running = false);
         }
+        switch (instruction & 0x00FF) {
+          case 0x07:
+            //Set VX to the current value of delay timer
+            chip8_state.V[NIBBLE2] = chip8_state.delay_timer;
+            break;
+          case 0x0A:
+            //TODO
+            break;
+          case 0x15:
+            //Set the delay timer to VX
+            chip8_state.delay_timer = chip8_state.V[NIBBLE2];
+            break;
+          case 0x18:
+            //Set the sound timer to VX
+            chip8_state.sound_timer = chip8_state.V[NIBBLE2];
+            break;
+          case 0x1E:
+            break;
+          case 0x29:
+            break;
+          case 0x33:
+            break;
+          case 0x55:
+            break;
+          case 0x65:
+            break;
+          default:
+            std::cout << "Instruction not implemented or ROM error!" << std::endl;
+            cleanup(state_file);
+            exit(EXIT_FAILURE);
+        }
         break;
       }
       default:
         std::cout << "Instruction not implemented or ROM error!" << std::endl;
+        cleanup(state_file);
         exit(EXIT_FAILURE);
     }
 
