@@ -96,11 +96,14 @@ int main(int argc, char* argv[]) {
   std::chrono::milliseconds time_accumulator(0);
 
   while (window.isOpen()) {
-    //std::cout<< "main loop\n";
     auto current_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_timer_update);
+    //std::cout << "Current time = " << std::chrono::duration_cast<std::chrono::seconds>(current_time.time_since_epoch()).count() << " ms" << std::endl;
+    //std::cout << "last_timer_update = " << std::chrono::duration_cast<std::chrono::seconds>(last_timer_update.time_since_epoch()).count() << " ms" << std::endl;
     time_accumulator += elapsed_time;
     last_timer_update = current_time;
+    //std::cout << "Actual frame time: " << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time).count() << " ms" << std::endl;
+    //std::cout << "time accumulator: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_accumulator).count() << std::endl;
 
     //Process events (keyboard, mouse, etc.)
     while (const std::optional event = window.pollEvent()) {
@@ -124,6 +127,7 @@ int main(int argc, char* argv[]) {
 
     //FRAME
     if (time_accumulator >= FRAME_DURATION) { //If at least 16.67ms has passed
+      //std::cout << "New FRAME\n";
 
       //Run multiple CPU cycles per frame
       int cycles_per_frame = 12; //Chip8 CPU's run about 8-16 instructions per frame I think???
@@ -139,8 +143,7 @@ int main(int argc, char* argv[]) {
       }
       if (chip8_state.sound_timer > 0) {
         chip8_state.sound_timer--;
-        std::cout << "sound_timer = " << static_cast<int>(chip8_state.sound_timer) << std::endl;
-        std::cout << "time accumulator: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_accumulator).count() << std::endl;
+        //std::cout << "sound_timer = " << static_cast<int>(chip8_state.sound_timer) << std::endl;
         if (beepSound.getStatus() != sf::SoundSource::Status::Playing) {
           beepSound.play();
         }
@@ -154,6 +157,10 @@ int main(int argc, char* argv[]) {
       time_accumulator -= FRAME_DURATION;
 
     } //END OF FRAME
+
+    if (time_accumulator < FRAME_DURATION) {
+      std::this_thread::sleep_for(FRAME_DURATION - time_accumulator);
+    }
 
   }
 
