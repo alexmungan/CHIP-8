@@ -1,5 +1,7 @@
 #include "chip8.h"
 
+int key_pressed = -1;
+
 uint8_t chip8_fontset[80] = {
   0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
   0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -293,17 +295,23 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
             break;
           case 0x0A: {
             //Wait for a keypress, store the result in VX
-            bool keyPressed = false;
+            if ((key_pressed != -1) && chip8_state.keypad[key_pressed] == 0) {
+              key_pressed = -1;
+              break;
+            }
+
+            //bool keyPressed = false;
             for (uint8_t key = 0; key < 16; key++) {
               if (chip8_state.keypad[key]) {
+                key_pressed = key;
                 chip8_state.V[NIBBLE2] = key;
-                keyPressed = true;
+                //keyPressed = true;
                 break;
               }
             }
-            if (!keyPressed) {
-              chip8_state.PC -= 2; // Re-execute the instruction until a key is pressed
-            }
+            //if (!keyPressed) {
+              chip8_state.PC -= 2; // Re-execute the instruction until a key is pressed and released
+            //}
             break;
           }
           case 0x15:
