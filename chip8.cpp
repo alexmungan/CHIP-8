@@ -159,41 +159,53 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
           case 4: {
             //(8XY4) Add VY to VX, set VF (overflow flag)
             uint16_t result = static_cast<uint16_t>( chip8_state.V[NIBBLE2] ) + static_cast<uint16_t>( chip8_state.V[NIBBLE1] );
+            uint8_t flag;
             if (result > UINT8_MAX)
-              chip8_state.V[0xF] = 1;
+              flag= 1;
             else
-              chip8_state.V[0xF] = 0;
+              flag = 0;
             chip8_state.V[NIBBLE2] = static_cast<uint8_t>(result);
+            chip8_state.V[0xF] = flag;
             break;
           }
           case 5: {
             //(8XY5) Subtract VX = VX - VY, set VF (underflow flag)
+            uint16_t result = static_cast<uint16_t>(chip8_state.V[NIBBLE2]) - static_cast<uint16_t>(chip8_state.V[NIBBLE1]);
+            uint8_t flag;
             if (chip8_state.V[NIBBLE2] < chip8_state.V[NIBBLE1])
-              chip8_state.V[0xF] = 0;
+              flag = 0;
             else
-              chip8_state.V[0xF] = 1;
-            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE2] - chip8_state.V[NIBBLE1];
+              flag = 1;
+            chip8_state.V[NIBBLE2] = static_cast<uint8_t>(result);
+            chip8_state.V[0xF] = flag;
             break;
           }
           case 6: {
             //(8XY6) VX = VY >> 1, VF is VY's lsb (before shift)
-            chip8_state.V[0xF] = chip8_state.V[NIBBLE1] & static_cast<uint8_t>(0x01);
-            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE1] >> 1;
+            uint8_t result = chip8_state.V[NIBBLE1] >> 1;
+            uint8_t lsb = chip8_state.V[NIBBLE1] & static_cast<uint8_t>(0x01);
+            chip8_state.V[NIBBLE2] = result;
+            chip8_state.V[0xF] = lsb;
             break;
           }
           case 7: {
             //(8XY7) Subtract VX = VY - VX, set VF (underflow flag)
+            uint16_t result = static_cast<uint16_t>(chip8_state.V[NIBBLE1]) - static_cast<uint16_t>(chip8_state.V[NIBBLE2]);
+            uint8_t flag;
             if (chip8_state.V[NIBBLE1] < chip8_state.V[NIBBLE2])
-              chip8_state.V[0xF] = 0;
+              flag = 0;
             else
-              chip8_state.V[0xF] = 1;
-            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE1] - chip8_state.V[NIBBLE2];
+              flag = 1;
+            chip8_state.V[NIBBLE2] = static_cast<uint8_t>(result);
+            chip8_state.V[0xF] = flag;
             break;
           }
           case 14: {
             //(8XYE) VX = VY << 1, VF is VY's msb (before shift)
-            chip8_state.V[0xF] = (chip8_state.V[NIBBLE1] & static_cast<uint8_t>(0x80)) >> 7;
-            chip8_state.V[NIBBLE2] = chip8_state.V[NIBBLE1] << 1;
+            uint8_t result = chip8_state.V[NIBBLE1] << 1;
+            uint8_t msb = (chip8_state.V[NIBBLE1] & static_cast<uint8_t>(0x80)) >> 7;
+            chip8_state.V[NIBBLE2] = result;
+            chip8_state.V[0xF] = msb;
             break;
           }
           default:
