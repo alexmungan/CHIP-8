@@ -39,6 +39,12 @@ int main(int argc, char* argv[]) {
   /**** Load ROM into virtual memory and initialize the interpreter's state ****/
   std::cout << "Loading ROM: " << rom_path << std::endl;
   Chip8 chip8_state;
+
+  //Load in Chip-8 Font Data
+  for (int i = 0; i < 80; i++) {
+    chip8_state.mem[0x050 + i] = chip8_fontset[i];
+  }
+
   //Set up chip8_state dump file
   std::filesystem::path path(rom_path);
   std::filesystem::path chip8_state_dump_path = path.parent_path().parent_path() / "chip8_state_dump" / (path.stem().string() + "_statedump.txt");
@@ -72,6 +78,7 @@ int main(int argc, char* argv[]) {
     cleanup(state_file);
     exit(EXIT_FAILURE);
   }
+
   /******************************************************************************/
 
 

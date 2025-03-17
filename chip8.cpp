@@ -1,5 +1,24 @@
 #include "chip8.h"
 
+uint8_t chip8_fontset[80] = {
+  0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+  0x20, 0x60, 0x20, 0x20, 0x70, // 1
+  0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+  0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+  0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+  0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+  0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+  0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+  0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+  0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+  0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+  0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+  0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+  0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+  0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+  0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
+
 void cleanup(std::ofstream& state_file) {
   if (state_file) state_file.close();
 }
@@ -260,9 +279,21 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
             //Set VX to the current value of delay timer
             chip8_state.V[NIBBLE2] = chip8_state.delay_timer;
             break;
-          case 0x0A:
-            //TODO
+          case 0x0A: {
+            //Wait for a keypress, store the result in VX
+            bool keyPressed = false;
+            for (uint8_t key = 0; key < 16; key++) {
+              if (chip8_state.keypad[key]) {
+                chip8_state.V[NIBBLE2] = key;
+                keyPressed = true;
+                break;
+              }
+            }
+            if (!keyPressed) {
+              chip8_state.PC -= 2; // Re-execute the instruction until a key is pressed
+            }
             break;
+          }
           case 0x15:
             //Set the delay timer to VX
             chip8_state.delay_timer = chip8_state.V[NIBBLE2];
@@ -272,14 +303,34 @@ bool emulateCycle(Chip8& chip8_state, uint16_t& instruction, std::ofstream& stat
             chip8_state.sound_timer = chip8_state.V[NIBBLE2];
             break;
           case 0x1E:
+            //Add VX to register I
+            chip8_state.I += chip8_state.V[NIBBLE2];
             break;
           case 0x29:
+            //Set I to the address of the sprite data for the hex digit stored in VX
+            chip8_state.I = (FONT_START) + (chip8_state.V[NIBBLE2] * 5);
             break;
-          case 0x33:
+          case 0x33: {
+            //Store BCD encoded version of VX into I, I+1, I+2
+            uint8_t val = chip8_state.V[NIBBLE2];
+            chip8_state.mem[chip8_state.I] = val / 100;
+            chip8_state.mem[chip8_state.I + 1] = (val / 10) % 10;
+            chip8_state.mem[chip8_state.I + 2] = val % 10;
             break;
+          }
           case 0x55:
+            //Fill mem locations I,...,I+X with V0,...,VX, set I to I + X + 1
+            for (int i = 0; i <= NIBBLE2; i++) {
+              chip8_state.mem[chip8_state.I+i] = chip8_state.V[i];
+            }
+            chip8_state.I = chip8_state.I + static_cast<uint16_t>(NIBBLE2) + 1;
             break;
           case 0x65:
+            //Fill V0 to VX with values stored at I, I+1, ..., set I to I + X + 1
+            for (int i = 0; i <= NIBBLE2; i++) {
+              chip8_state.V[i] = chip8_state.mem[chip8_state.I+i];
+            }
+            chip8_state.I = chip8_state.I + static_cast<uint16_t>(NIBBLE2) + 1;
             break;
           default:
             std::cout << "Instruction not implemented or ROM error!" << std::endl;

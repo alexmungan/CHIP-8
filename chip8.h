@@ -12,12 +12,15 @@
 
 constexpr size_t MEM_SIZE = 4096;
 constexpr size_t loadAddress = 0x200; //CHIP-8 programs are usually loaded at address 0x200 (512)
+constexpr size_t FONT_START = 0x050;  //Font for hex digits stored in chip8 memory
 constexpr int CHIP8_WIDTH = 64;
 constexpr int CHIP8_HEIGHT = 32;
 #define NIBBLE3 (instruction & 0xF000) >> 12
 #define NIBBLE2 (instruction & 0x0F00) >> 8
 #define NIBBLE1 (instruction & 0x00F0) >> 4
 #define NIBBLE0 (instruction & 0x000F)
+
+extern uint8_t chip8_fontset[80];
 
 typedef struct Chip8 {
     // Memory
